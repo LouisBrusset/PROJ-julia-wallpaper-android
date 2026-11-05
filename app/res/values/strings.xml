@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fonds Julia</string>
+    <string name="subtitle">Une nouvelle fractale à chaque mise en veille</string>
+    <string name="preview">Fond d\'écran actuel</string>
+    <string name="next">Suivante</string>
+    <string name="add_fav">♥ Favori</string>
+    <string name="enabled">Changer à chaque mise en veille</string>
+    <string name="target_title">Appliquer sur</string>
+    <string name="target_both">Écran d\'accueil et écran de verrouillage</string>
+    <string name="target_home">Écran d\'accueil seulement</string>
+    <string name="target_lock">Écran de verrouillage seulement</string>
+    <string name="favs">Favoris</string>
+    <string name="favs_empty">Aucun favori pour l\'instant. Touchez « ♥ Favori » pour garder la fractale affichée.</string>
+    <string name="none_yet">Activez le service ou touchez « Suivante » pour créer la première fractale.</string>
+    <string name="rendering">Calcul en cours…</string>
+    <string name="fav_added">Ajoutée aux favoris</string>
+    <string name="fav_already">Déjà dans les favoris</string>
+    <string name="fav_apply">Appliquer maintenant</string>
+    <string name="fav_export">Enregistrer dans Images</string>
+    <string name="fav_delete">Supprimer</string>
+    <string name="exported">Enregistrée dans Images/Julia</string>
+    <string name="channel_name">Service fond d\'écran</string>
+    <string name="notif_title">Fonds Julia actif</string>
+    <string name="notif_text">Change le fond d\'écran à chaque mise en veille</string>
+</resources>
