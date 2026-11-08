@@ -14,6 +14,8 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.provider.MediaStore;
 import android.view.View;
 import android.view.ViewGroup;
@@ -58,6 +60,8 @@ public class MainActivity extends Activity {
     private Bitmap previewBmp;
     private final List<Bitmap> thumbs = new ArrayList<Bitmap>();
     private boolean binding;
+    private View batteryBox;
+    private TextView journal;
 
     private final Runnable poll = new Runnable() {
         public void run() {
@@ -77,6 +81,26 @@ public class MainActivity extends Activity {
         favGrid = findViewById(R.id.fav_grid);
         enabled = findViewById(R.id.enabled);
         target = findViewById(R.id.target);
+        batteryBox = findViewById(R.id.battery_box);
+        journal = findViewById(R.id.journal);
+        ((Button) findViewById(R.id.battery_btn)).setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                try {
+                    startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            Uri.parse("package:" + getPackageName())));
+                } catch (Exception e) {
+                    startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+                }
+            }
+        });
+        ((Button) findViewById(R.id.journal_btn)).setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (journal.getVisibility() == View.VISIBLE) { journal.setVisibility(View.GONE); return; }
+                String j = Store.journal(MainActivity.this, 40);
+                journal.setText(j.isEmpty() ? "(vide)" : j);
+                journal.setVisibility(View.VISIBLE);
+            }
+        });
 
         /* aperçu au format de l'écran */
         Rect bounds = getSystemService(WindowManager.class).getMaximumWindowMetrics().getBounds();
@@ -92,8 +116,8 @@ public class MainActivity extends Activity {
                 Properties p = Store.settings(MainActivity.this);
                 p.setProperty(Store.K_ENABLED, Boolean.toString(on));
                 Store.save(MainActivity.this, "settings.properties", p);
-                if (on) command(JuliaService.ACTION_ENSURE, null);
-                else stopService(new Intent(MainActivity.this, JuliaService.class));
+                if (on) { Store.scheduleWatchdog(MainActivity.this); command(JuliaService.ACTION_ENSURE, null); }
+                else { Store.cancelWatchdog(MainActivity.this); stopService(new Intent(MainActivity.this, JuliaService.class)); }
             }
         });
         target.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
@@ -117,6 +141,10 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         bindSettings();
+        /* auto-réparation : si le service activé ne tourne plus, on le relance */
+        if (Store.enabled(this)) { Store.scheduleWatchdog(this); Store.startService(this, "ouverture de l'appli"); }
+        PowerManager pm = getSystemService(PowerManager.class);
+        batteryBox.setVisibility(pm.isIgnoringBatteryOptimizations(getPackageName()) ? View.GONE : View.VISIBLE);
         lastStamp = -1;
         ui.post(poll);
         loadFavorites();

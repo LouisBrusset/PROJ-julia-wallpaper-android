@@ -48,6 +48,10 @@ Avec le SDK Android officiel, indiquez les outils de `build-tools` : `AAPT2=…/
 
 **Signature.** Le script crée une clé `debug.keystore` si `KEYSTORE` n'est pas fourni. Pour installer une mise à jour par-dessus une version existante, il faut **la même clé** que la première fois : conservez-la (elle est exclue de git).
 
+### Démarrage automatique après un redémarrage
+
+Le service est relancé au démarrage du téléphone, et une tâche de secours vérifie toutes les ~15 minutes qu'il tourne encore. Android n'autorise ces relances en arrière-plan que si l'appli n'est pas freinée par l'optimisation de batterie : touchez **« Autoriser en arrière-plan »** dans l'appli (le bouton disparaît une fois l'autorisation donnée). En cas de souci, le **journal de diagnostic** en bas de l'appli indique ce qui s'est passé (démarrage reçu, service lancé, erreurs).
+
 ## Utilisation
 
 | Élément | Effet |
@@ -58,6 +62,8 @@ Avec le SDK Android officiel, indiquez les outils de `build-tools` : `AAPT2=…/
 | Interrupteur | active ou coupe le changement automatique |
 | Appliquer sur | accueil + verrouillage, accueil seul ou verrouillage seul |
 | Appui sur un favori | appliquer, enregistrer dans Images/Julia, supprimer |
+| Autoriser en arrière-plan | lève l'optimisation de batterie (nécessaire au redémarrage automatique) |
+| Journal de diagnostic | derniers événements du service |
 
 ## Fonctionnement
 

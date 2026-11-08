@@ -1,5 +1,8 @@
 package io.github.louisbrusset.juliawallpaper;
 
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.res.Configuration;
 
@@ -70,6 +73,65 @@ final class Store {
     }
 
     static boolean exists(String path) { return path != null && new File(path).isFile(); }
+
+    /* ---------------------------------------------------------------- */
+    /* Journal de diagnostic (files/journal.txt, quelques Ko au plus)     */
+
+    static synchronized void log(Context c, String msg) {
+        File f = new File(c.getFilesDir(), "journal.txt");
+        try {
+            if (f.length() > 24 * 1024) {             // on garde la fin
+                byte[] all = java.nio.file.Files.readAllBytes(f.toPath());
+                int from = all.length - 12 * 1024;
+                while (from < all.length && all[from] != '\n') from++;
+                java.nio.file.Files.write(f.toPath(), java.util.Arrays.copyOfRange(all, Math.min(from + 1, all.length), all.length));
+            }
+            String line = new java.text.SimpleDateFormat("dd/MM HH:mm:ss", java.util.Locale.FRANCE).format(new java.util.Date())
+                    + "  " + msg + "\n";
+            FileOutputStream out = new FileOutputStream(f, true);
+            try { out.write(line.getBytes("UTF-8")); } finally { out.close(); }
+        } catch (IOException ignored) {}
+    }
+
+    static String journal(Context c, int maxLines) {
+        File f = new File(c.getFilesDir(), "journal.txt");
+        try {
+            String[] lines = new String(java.nio.file.Files.readAllBytes(f.toPath()), "UTF-8").split("\n");
+            StringBuilder sb = new StringBuilder();
+            for (int i = lines.length - 1; i >= 0 && i >= lines.length - maxLines; i--) sb.append(lines[i]).append('\n');
+            return sb.toString();
+        } catch (IOException e) { return ""; }
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Tâche de secours : relance le service s'il n'est plus là          */
+
+    static final int WATCHDOG_JOB = 42;
+
+    static void scheduleWatchdog(Context c) {
+        JobScheduler js = c.getSystemService(JobScheduler.class);
+        if (js.getPendingJob(WATCHDOG_JOB) != null) return;
+        JobInfo job = new JobInfo.Builder(WATCHDOG_JOB, new ComponentName(c, WatchdogJob.class))
+                .setPeriodic(15 * 60 * 1000L)
+                .setPersisted(true)                 // survit au redémarrage
+                .build();
+        js.schedule(job);
+    }
+
+    static void cancelWatchdog(Context c) {
+        c.getSystemService(JobScheduler.class).cancel(WATCHDOG_JOB);
+    }
+
+    /** Démarre (ou relance) le service ; ne plante jamais, journalise l'échec. */
+    static boolean startService(Context c, String why) {
+        try {
+            c.startForegroundService(new android.content.Intent(c, JuliaService.class).setAction(JuliaService.ACTION_ENSURE));
+            return true;
+        } catch (Exception e) {
+            log(c, "échec du démarrage du service (" + why + ") : " + e.getClass().getSimpleName() + " " + e.getMessage());
+            return false;
+        }
+    }
 
     static void copy(File from, File to) throws IOException {
         File t = new File(to.getPath() + ".tmp");

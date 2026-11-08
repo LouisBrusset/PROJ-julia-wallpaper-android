@@ -49,6 +49,9 @@ public class JuliaService extends Service {
     static final String EXTRA_DAY = "day", EXTRA_NIGHT = "night", EXTRA_INFO = "info";
     private static final String CHANNEL = "service";
 
+    /** Vrai tant que le service vit dans ce processus (lu par WatchdogJob, même processus). */
+    static volatile boolean running;
+
     private ExecutorService worker;
     private BroadcastReceiver screenOff;
     private int lastNight;
@@ -87,11 +90,15 @@ public class JuliaService extends Service {
         if (Build.VERSION.SDK_INT >= 34) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         else startForeground(1, n);
 
+        running = true;
+        Store.log(this, "service démarré");
+        Store.scheduleWatchdog(this);
         worker = Executors.newSingleThreadExecutor(LOW);
         lastNight = Store.isNight(this) ? 1 : 0;
         screenOff = new BroadcastReceiver() {
             @Override public void onReceive(Context c, Intent i) {
                 if (Store.enabled(JuliaService.this)) submitPromote();
+                else { Store.log(JuliaService.this, "service désactivé : arrêt"); stopSelf(); }
             }
         };
         IntentFilter f = new IntentFilter(Intent.ACTION_SCREEN_OFF);
@@ -126,6 +133,8 @@ public class JuliaService extends Service {
     }
 
     @Override public void onDestroy() {
+        running = false;
+        Store.log(this, "service arrêté");
         try { unregisterReceiver(screenOff); } catch (Exception ignored) {}
         worker.shutdown();
         super.onDestroy();
@@ -140,7 +149,7 @@ public class JuliaService extends Service {
                         .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "julia:work");
                 wl.acquire(3 * 60 * 1000L);
                 try { r.run(); }
-                catch (Throwable t) { Log.e(TAG, "erreur", t); }
+                catch (Throwable t) { Log.e(TAG, "erreur", t); Store.log(JuliaService.this, "erreur : " + t); }
                 finally { if (wl.isHeld()) wl.release(); }
             }
         });
@@ -183,6 +192,7 @@ public class JuliaService extends Service {
             Store.save(this, "state.properties", st);
         } catch (Exception e) {
             Log.e(TAG, "rendu impossible", e);
+            Store.log(this, "rendu impossible : " + e);
             d.delete(); n.delete();
         }
         System.gc();   // rend tout de suite les ~10 Mo du rendu
@@ -199,6 +209,7 @@ public class JuliaService extends Service {
         st.remove(Store.K_NEXT_DAY); st.remove(Store.K_NEXT_NIGHT); st.remove(Store.K_NEXT_INFO);
         Store.save(this, "state.properties", st);
         applyCurrent();
+        Store.log(this, "nouveau fond : " + st.getProperty(Store.K_CUR_INFO, ""));
         deleteIfOwned(oldD); deleteIfOwned(oldN);
         renderNext();
     }
@@ -240,6 +251,7 @@ public class JuliaService extends Service {
             WallpaperManager.getInstance(this).setStream(in, null, true, which);
         } catch (Exception e) {
             Log.e(TAG, "application du fond impossible", e);
+            Store.log(this, "application du fond impossible : " + e);
         } finally { if (in != null) try { in.close(); } catch (Exception ignored) {} }
     }
 }
