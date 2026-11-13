@@ -11,7 +11,7 @@ import android.app.job.JobService;
  */
 public class WatchdogJob extends JobService {
     @Override public boolean onStartJob(JobParameters p) {
-        if (Store.enabled(this)) {
+        if (Store.enabledState(this) != 0) {
             if (!JuliaService.running) {
                 Store.log(this, "service absent : relance par la tâche de secours");
                 Store.startService(this, "tâche de secours");

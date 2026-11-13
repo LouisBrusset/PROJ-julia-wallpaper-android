@@ -56,6 +56,7 @@ public class JuliaService extends Service {
     private BroadcastReceiver screenOff;
     private int lastNight;
     private volatile boolean promotePending;
+    private boolean refused;
     private final SecureRandom random = new SecureRandom();
 
     private static final ThreadFactory LOW = new ThreadFactory() {
@@ -87,17 +88,30 @@ public class JuliaService extends Service {
                 .setContentIntent(pi)
                 .setOngoing(true)
                 .build();
-        if (Build.VERSION.SDK_INT >= 34) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-        else startForeground(1, n);
+        /* Quand Android relance lui-même le service (après l'avoir tué faute de
+           mémoire), il peut refuser le passage au premier plan si l'appli est
+           soumise à l'optimisation de batterie. Avant la v2 cela faisait planter
+           le service en boucle, jusqu'à la prochaine ouverture de l'appli. */
+        try {
+            if (Build.VERSION.SDK_INT >= 34) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            else startForeground(1, n);
+        } catch (Exception e) {
+            Store.log(this, "relance refusée par Android (" + e.getClass().getSimpleName() + ")"
+                    + (Store.batteryExempt(this) ? "" : " : autorisez l'appli en arrière-plan"));
+            refused = true;
+            stopSelf();
+            return;
+        }
 
         running = true;
-        Store.log(this, "service démarré");
+        Store.log(this, "service démarré" + (Store.batteryExempt(this) ? "" : " (optimisation de batterie active)"));
         Store.scheduleWatchdog(this);
         worker = Executors.newSingleThreadExecutor(LOW);
         lastNight = Store.isNight(this) ? 1 : 0;
         screenOff = new BroadcastReceiver() {
             @Override public void onReceive(Context c, Intent i) {
-                if (Store.enabled(JuliaService.this)) submitPromote();
+                int st = Store.enabledState(JuliaService.this);
+                if (st != 0) submitPromote();         // -1 (lecture ratée) : on continue quand même
                 else { Store.log(JuliaService.this, "service désactivé : arrêt"); stopSelf(); }
             }
         };
@@ -107,6 +121,8 @@ public class JuliaService extends Service {
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        if (refused) { stopSelf(); return START_NOT_STICKY; }
+        if (intent == null) Store.log(this, "service relancé par Android");
         String a = intent != null && intent.getAction() != null ? intent.getAction() : ACTION_ENSURE;
         if (ACTION_NEXT.equals(a)) submitPromote();
         else if (ACTION_REAPPLY.equals(a)) submit(new Runnable() { public void run() { applyCurrent(); } });
@@ -115,7 +131,7 @@ public class JuliaService extends Service {
             submit(new Runnable() { public void run() { applyGiven(d, n, info); } });
         } else submit(new Runnable() { public void run() { ensure(); } });
 
-        if (!Store.enabled(this)) {
+        if (Store.enabledState(this) == 0) {
             /* service désactivé : on exécute la commande puis on s'arrête */
             submit(new Runnable() { public void run() { stopSelf(); } });
             return START_NOT_STICKY;
@@ -125,6 +141,7 @@ public class JuliaService extends Service {
 
     @Override public void onConfigurationChanged(Configuration c) {
         super.onConfigurationChanged(c);
+        if (refused) return;
         int night = (c.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES ? 1 : 0;
         if (night != lastNight) {
             lastNight = night;
@@ -133,10 +150,12 @@ public class JuliaService extends Service {
     }
 
     @Override public void onDestroy() {
-        running = false;
-        Store.log(this, "service arrêté");
-        try { unregisterReceiver(screenOff); } catch (Exception ignored) {}
-        worker.shutdown();
+        if (!refused) {
+            running = false;
+            Store.log(this, "service arrêté");
+            try { unregisterReceiver(screenOff); } catch (Exception ignored) {}
+            worker.shutdown();
+        }
         super.onDestroy();
     }
 

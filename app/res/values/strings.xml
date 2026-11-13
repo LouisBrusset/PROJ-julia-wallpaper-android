@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Fonds Julia</string>
-    <string name="subtitle">Une nouvelle fractale à chaque mise en veille</string>
+    <string name="subtitle">Une nouvelle fractale à chaque mise en veille : Julia, Mandelbrot, Newton, Sierpinski, fougères…</string>
     <string name="preview">Fond d\'écran actuel</string>
     <string name="next">Suivante</string>
     <string name="add_fav">♥ Favori</string>
@@ -23,7 +23,7 @@
     <string name="channel_name">Service fond d\'écran</string>
     <string name="notif_title">Fonds Julia actif</string>
     <string name="notif_text">Change le fond d\'écran à chaque mise en veille</string>
-    <string name="battery_text">Pour que le service redémarre tout seul après un redémarrage du téléphone, autorisez l\'appli à fonctionner en arrière-plan sans restriction de batterie.</string>
+    <string name="battery_text">⚠ Optimisation de batterie active : si Android arrête le service (manque de mémoire, redémarrage), il ne pourra pas le relancer tout seul et le fond ne changera plus. Autorisez l\'appli à fonctionner en arrière-plan.</string>
     <string name="battery_btn">Autoriser en arrière-plan</string>
     <string name="journal">Journal de diagnostic</string>
 </resources>

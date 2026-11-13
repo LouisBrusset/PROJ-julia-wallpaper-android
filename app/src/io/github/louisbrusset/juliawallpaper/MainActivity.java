@@ -84,14 +84,7 @@ public class MainActivity extends Activity {
         batteryBox = findViewById(R.id.battery_box);
         journal = findViewById(R.id.journal);
         ((Button) findViewById(R.id.battery_btn)).setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                try {
-                    startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                            Uri.parse("package:" + getPackageName())));
-                } catch (Exception e) {
-                    startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
-                }
-            }
+            public void onClick(View v) { requestBatteryExemption(); }
         });
         ((Button) findViewById(R.id.journal_btn)).setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -116,7 +109,10 @@ public class MainActivity extends Activity {
                 Properties p = Store.settings(MainActivity.this);
                 p.setProperty(Store.K_ENABLED, Boolean.toString(on));
                 Store.save(MainActivity.this, "settings.properties", p);
-                if (on) { Store.scheduleWatchdog(MainActivity.this); command(JuliaService.ACTION_ENSURE, null); }
+                if (on) {
+                    Store.scheduleWatchdog(MainActivity.this); command(JuliaService.ACTION_ENSURE, null);
+                    if (!Store.batteryExempt(MainActivity.this)) requestBatteryExemption();
+                }
                 else { Store.cancelWatchdog(MainActivity.this); stopService(new Intent(MainActivity.this, JuliaService.class)); }
             }
         });
@@ -158,6 +154,18 @@ public class MainActivity extends Activity {
     @Override protected void onDestroy() {
         io.shutdownNow();
         super.onDestroy();
+    }
+
+    /** Fenêtre système "ne pas optimiser la batterie" : indispensable pour que
+     *  Android puisse relancer le service après l'avoir tué. */
+    private void requestBatteryExemption() {
+        try {
+            startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception e) {
+            try { startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)); }
+            catch (Exception ignored) {}
+        }
     }
 
     private void bindSettings() {

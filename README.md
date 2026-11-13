@@ -2,9 +2,11 @@
 
 <img src="docs/images/icone.png" width="96" align="right" alt="Icône">
 
-Application Android qui change le fond d'écran à chaque mise en veille (bouton marche/arrêt) : une nouvelle fractale de l'**ensemble de Julia** calculée sur le téléphone, à la taille exacte de l'écran, avec une version **mode clair** et une version **mode sombre**.
+Application Android qui change le fond d'écran à chaque mise en veille (bouton marche/arrêt) : une nouvelle **fractale** calculée sur le téléphone, à la taille exacte de l'écran, avec une version **mode clair** et une version **mode sombre**.
 
-Version Android de [PROJ-julia-wallpaper-linux](https://github.com/LouisBrusset/PROJ-julia-wallpaper-linux) (même moteur, porté en Java).
+Version 2.0 : onze types de fractales (Julia, Mandelbrot, Burning Ship, Newton, Lyapunov, tapis et triangle de Sierpinski, fougères, dragons, flocons…) et des palettes monochromes, bicolores, tricolores ou arc-en-ciel.
+
+Version Android de [PROJ-julia-wallpaper-linux](https://github.com/LouisBrusset/PROJ-julia-wallpaper-linux) : même moteur, porté en Java, qui donne la même fractale pour une même graine.
 
 ![Exemples en mode clair et sombre](docs/images/apercu-telephone.jpg)
 
@@ -16,7 +18,14 @@ Version Android de [PROJ-julia-wallpaper-linux](https://github.com/LouisBrusset/
 - **Favoris** : un appui sur « ♥ Favori » garde la fractale affichée. Ensuite, un appui sur un favori permet de l'appliquer, de l'enregistrer dans la galerie (`Images/Julia`) ou de la supprimer.
 - **Interrupteur** pour activer ou couper le service.
 - **Taille d'écran détectée automatiquement**, avec un cadrage adapté au portrait.
-- **Fractales choisies pour être belles** : paramètres près du bord de l'ensemble de Mandelbrot, cinq thèmes de couleurs.
+- **Onze types de fractales** tirés au hasard. Pour chacun, plusieurs jeux de paramètres sont tirés puis notés sur un aperçu, et le plus beau est gardé :
+  - ensembles de **Julia** (degré 2 à 6) et **Phoenix** ;
+  - zooms dans **Mandelbrot**, **Burning Ship** et le **Tricorne** ;
+  - bassins de **Newton** et fractales de **Lyapunov** ;
+  - **tapis de Sierpinski** généralisés (tapis classique, éponge de Menger vue de face, Vicsek, poussière de Cantor et leurs variantes) et **triangle de Sierpinski** ;
+  - **IFS** : fougère de Barnsley, dragon, courbe de Lévy, courbe de Koch, flocons, spirales, rosaces, IFS aléatoires.
+- **Des milliers de palettes** : cinq thèmes, plus des palettes générées (monochrome, bicolore, tricolore, arc-en-ciel), néon la nuit et pastel le jour (fond teinté, jamais blanc).
+- **Cadrage flexible** : objets entiers dans un format allant de 1:1 jusqu'à celui de l'écran, ou zooms plein écran.
 
 ## Installation
 
@@ -25,6 +34,8 @@ Version Android de [PROJ-julia-wallpaper-linux](https://github.com/LouisBrusset/
 1. Téléchargez `julia-wallpaper.apk` (page [Releases](../../releases) ou fichier fourni).
 2. Ouvrez-le sur le téléphone. Android demande d'autoriser l'installation depuis cette source (navigateur ou gestionnaire de fichiers) : acceptez pour cette application.
 3. Ouvrez **Fonds Julia** et activez **« Changer à chaque mise en veille »**. La première fractale est calculée et appliquée en quelques secondes.
+
+**Mise à jour** : installez simplement le nouvel APK par-dessus l'ancien. Les favoris et les réglages sont conservés, tant que l'APK est signé avec la même clé.
 
 L'APK n'est pas publié sur le Play Store. Il est signé avec une clé personnelle, donc Play Protect peut afficher un avertissement « application inconnue ».
 
@@ -48,9 +59,13 @@ Avec le SDK Android officiel, indiquez les outils de `build-tools` : `AAPT2=…/
 
 **Signature.** Le script crée une clé `debug.keystore` si `KEYSTORE` n'est pas fourni. Pour installer une mise à jour par-dessus une version existante, il faut **la même clé** que la première fois : conservez-la (elle est exclue de git).
 
-### Démarrage automatique après un redémarrage
+### Démarrage automatique et arrière-plan
 
-Le service est relancé au démarrage du téléphone, et une tâche de secours vérifie toutes les ~15 minutes qu'il tourne encore. Android n'autorise ces relances en arrière-plan que si l'appli n'est pas freinée par l'optimisation de batterie : touchez **« Autoriser en arrière-plan »** dans l'appli (le bouton disparaît une fois l'autorisation donnée). En cas de souci, le **journal de diagnostic** en bas de l'appli indique ce qui s'est passé (démarrage reçu, service lancé, erreurs).
+Le service est relancé au démarrage du téléphone, et une tâche de secours vérifie environ toutes les 15 minutes qu'il tourne encore (sans coût mesurable : c'est Android qui regroupe ces tâches).
+
+**Important : autorisez l'appli en arrière-plan.** Si Android arrête le service (manque de mémoire, redémarrage), il ne peut le relancer tout seul que si l'appli n'est pas soumise à l'optimisation de batterie. La fenêtre du système s'ouvre quand le service est activé. Sinon, touchez **« Autoriser en arrière-plan »** : le bouton disparaît une fois l'autorisation donnée.
+
+Le **journal de diagnostic**, en bas de l'appli, indique ce qui s'est passé : démarrage reçu, service lancé ou relancé, relance refusée, erreurs.
 
 ## Utilisation
 
@@ -72,10 +87,13 @@ Le service est relancé au démarrage du téléphone, et une tâche de secours v
   - **Ensuite**, il calcule la nouvelle suivante en priorité basse, pendant que l'écran est éteint.
   - **Changement de thème** clair/sombre : il réapplique la bonne variante.
 - **`Renderer`** est le moteur, en Java pur.
-  - Il tire 10 paramètres `c` dans une « famille » au hasard et note chacun sur un aperçu (densité de détails, remplissage, format). Puis il cadre le meilleur selon son axe principal, tourné pour suivre la hauteur de l'écran.
-  - Il calcule la fractale une seule fois en multi-thread et la colore deux fois (jour et nuit), avec des dégradés OKLab, un anti-crénelage adaptatif et un tramage.
+  - Il tire un type de fractale, puis plusieurs jeux de paramètres de ce type, notés sur un aperçu (densité de détails, remplissage, format). Il cadre le meilleur : objet entier tourné pour suivre la hauteur de l'écran, ou zoom plein écran.
+  - Il tire une palette en OKLCH (version nuit néon, version jour pastel).
+  - Il calcule la fractale une seule fois en multi-thread et la colore deux fois (jour et nuit), avec un anti-crénelage adaptatif et un tramage.
   - **Mémoire** : 4 octets par pixel pendant le calcul, environ 10 Mo pour 1080 × 2400, libérés juste après. Les images couleur ne sont jamais entièrement en mémoire : elles sont compressées en PNG bande par bande, au fil du calcul.
 - **`MainActivity`** est l'interface, dans un processus séparé, avec uniquement les widgets du système. Les vignettes sont décodées en sous-échantillonné (RGB 565).
+
+Le détail des types de fractales, du tirage, du cadrage et des palettes est dans [docs/TECHNIQUE.md](docs/TECHNIQUE.md).
 
 Fichiers de l'appli : `files/walls/` (fond actuel et suivant), `files/favs/` (favoris), `settings.properties` (réglages) et `state.properties` (état du service).
 

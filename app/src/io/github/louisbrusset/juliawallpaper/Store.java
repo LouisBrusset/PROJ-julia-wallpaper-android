@@ -61,7 +61,27 @@ final class Store {
     static Properties settings(Context c) { return load(c, "settings.properties"); }
     static Properties state(Context c)    { return load(c, "state.properties"); }
 
-    static boolean enabled(Context c) { return Boolean.parseBoolean(settings(c).getProperty(K_ENABLED, "false")); }
+    static boolean enabled(Context c) { return enabledState(c) == 1; }
+
+    /**
+     * 1 = activé, 0 = désactivé explicitement par l'utilisateur, -1 = inconnu
+     * (fichier absent ou illisible). Le service ne s'arrête que sur un 0 :
+     * une lecture ratée ne doit jamais l'éteindre.
+     */
+    static int enabledState(Context c) {
+        File f = new File(c.getFilesDir(), "settings.properties");
+        Properties p = new Properties();
+        InputStream in = null;
+        try { in = new FileInputStream(f); p.load(in); }
+        catch (IOException e) { return -1; }
+        finally { if (in != null) try { in.close(); } catch (IOException ignored) {} }
+        String v = p.getProperty(K_ENABLED);
+        return v == null ? -1 : Boolean.parseBoolean(v.trim()) ? 1 : 0;
+    }
+
+    static boolean batteryExempt(Context c) {
+        return c.getSystemService(android.os.PowerManager.class).isIgnoringBatteryOptimizations(c.getPackageName());
+    }
     static int target(Context c) {
         try { return Integer.parseInt(settings(c).getProperty(K_TARGET, "2")); }
         catch (NumberFormatException e) { return TARGET_BOTH; }
